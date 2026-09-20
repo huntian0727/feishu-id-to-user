@@ -7,8 +7,8 @@ export default function LoadApp(props: { neverShowBanner?: boolean, children: Re
 
   const TopBanner = <div>
     <div className='errTop'>
-      After running the project, please get the webview address and paste it into the Base table "Extended Script" for use. See:&nbsp;
-      <a target='_blank' href='https://bytedance.feishu.cn/docx/HazFdSHH9ofRGKx8424cwzLlnZc'>Development Guide</a>
+      请在飞书多维表格中通过“插件 - 自定义插件”打开本页面。&nbsp;
+      <a target='_blank' rel='noreferrer' href='https://feishu.feishu.cn/docx/S1pMdbckEooVlhx53ZMcGGnMnKc'>开发指南</a>
     </div>
   </div>
   useEffect(() => {
