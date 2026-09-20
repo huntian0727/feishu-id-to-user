@@ -69,6 +69,14 @@ npm run build
 
 前端产物位于 `dist/`。生产环境通过 `VITE_API_BASE_URL` 请求独立部署的妙搭统一服务。
 
+仓库根目录同时提供可直接上传飞书静态托管的成品包：
+
+```text
+feishu-id-to-user-feishu-hosting.zip
+```
+
+该 ZIP 根目录直接包含 `index.html`、`favicon.svg` 和 `assets/`。校验值见同名 `.sha256` 文件。
+
 当前已验证的妙搭生产后端：
 
 ```text

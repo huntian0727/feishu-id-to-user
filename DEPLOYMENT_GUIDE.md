@@ -51,6 +51,8 @@ npm run build
 
 ## 3. 上传到飞书静态托管
 
+可以直接下载仓库根目录的 `feishu-id-to-user-feishu-hosting.zip` 上传。其 SHA-256 校验值记录在 `feishu-id-to-user-feishu-hosting.zip.sha256`。
+
 上传 `dist/` 内的全部内容。托管根目录必须直接包含：
 
 ```text
