@@ -39,6 +39,8 @@ npm install
 npm run dev
 ```
 
+为避免 OAuth 内存会话在转换过程中因文件监听误重启，默认开发命令不会自动重启服务端。修改 `server/` 后请重启 `npm run dev`；仅在不执行转换时可单独使用 `npm run dev:server:watch`。
+
 启动后：
 
 - 插件地址：`http://localhost:5173/`
