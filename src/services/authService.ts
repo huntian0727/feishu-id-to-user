@@ -1,4 +1,23 @@
 const SESSION_KEY = 'feishu-oauth-session';
+const PLUGIN_KEY = 'id-to-user';
+
+function resolveApiBaseUrl(): string {
+  const value = import.meta.env.VITE_API_BASE_URL?.trim().replace(/\/$/u, '');
+  if (!value) {
+    throw new Error('缺少 VITE_API_BASE_URL，无法连接统一服务。');
+  }
+  return value;
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
+
+function getApiUrl(path: string): string {
+  return `${API_BASE_URL}${path}`;
+}
+
+function getApiOrigin(): string {
+  return new URL(API_BASE_URL, window.location.href).origin;
+}
 
 interface OAuthMessage {
   type?: string;
@@ -16,8 +35,11 @@ export async function checkAuthSession(): Promise<boolean> {
     return false;
   }
 
-  const response = await fetch('/api/auth/status', {
-    headers: { Authorization: `Bearer ${sessionId}` },
+  const response = await fetch(getApiUrl('/api/v1/session/status'), {
+    headers: {
+      Authorization: `Bearer ${sessionId}`,
+      'X-Plugin-Key': PLUGIN_KEY,
+    },
   });
   if (!response.ok) {
     sessionStorage.removeItem(SESSION_KEY);
@@ -29,7 +51,10 @@ export async function checkAuthSession(): Promise<boolean> {
 export function startOAuth(): Promise<void> {
   return new Promise((resolve, reject) => {
     const popup = window.open(
-      '/api/auth/start',
+      getApiUrl(
+        `/api/v1/oauth/start?plugin=${encodeURIComponent(PLUGIN_KEY)}`
+        + `&origin=${encodeURIComponent(window.location.origin)}`,
+      ),
       'feishu-oauth',
       'popup=yes,width=560,height=720',
     );
@@ -44,7 +69,7 @@ export function startOAuth(): Promise<void> {
     }, 5 * 60_000);
 
     function onMessage(event: MessageEvent<OAuthMessage>) {
-      if (event.origin !== 'http://localhost:3001') {
+      if (event.origin !== getApiOrigin()) {
         return;
       }
       if (event.data?.type === 'feishu-oauth-success' && event.data.sessionId) {
@@ -67,9 +92,12 @@ export async function logoutOAuth(): Promise<void> {
   const sessionId = getAuthSession();
   sessionStorage.removeItem(SESSION_KEY);
   if (sessionId) {
-    await fetch('/api/auth/logout', {
+    await fetch(getApiUrl('/api/v1/session/logout'), {
       method: 'POST',
-      headers: { Authorization: `Bearer ${sessionId}` },
+      headers: {
+        Authorization: `Bearer ${sessionId}`,
+        'X-Plugin-Key': PLUGIN_KEY,
+      },
     });
   }
 }

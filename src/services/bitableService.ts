@@ -13,6 +13,17 @@ import { getAuthSession } from './authService';
 
 const PAGE_SIZE = 200;
 const WRITE_BATCH_SIZE = 50;
+const PLUGIN_KEY = 'id-to-user';
+
+function resolveApiBaseUrl(): string {
+  const value = import.meta.env.VITE_API_BASE_URL?.trim().replace(/\/$/u, '');
+  if (!value) {
+    throw new Error('缺少 VITE_API_BASE_URL，无法连接统一服务。');
+  }
+  return value;
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 interface PendingWrite {
   recordId: string;
@@ -21,11 +32,19 @@ interface PendingWrite {
 }
 
 interface BaseApiResponse {
+  success?: boolean;
+  updatedCount?: number;
   code?: number | string;
   msg?: string;
   error?: {
+    code?: number | string;
     message?: string;
+    details?: string;
   };
+}
+
+interface ValidationErrorDetails {
+  message?: string | string[];
 }
 
 function maskIdentifier(value: string): string {
@@ -33,6 +52,28 @@ function maskIdentifier(value: string): string {
     return `${value.slice(0, 2)}***${value.slice(-2)} (${value.length})`;
   }
   return `${value.slice(0, 4)}***${value.slice(-4)} (${value.length})`;
+}
+
+function getApiErrorDetail(payload: BaseApiResponse, responseText: string): string {
+  const details = payload.error?.details;
+  if (details) {
+    try {
+      const parsed = JSON.parse(details) as ValidationErrorDetails;
+      if (Array.isArray(parsed.message)) {
+        return parsed.message.join('；');
+      }
+      if (parsed.message) {
+        return parsed.message;
+      }
+    } catch {
+      return details;
+    }
+  }
+
+  return payload.error?.message
+    || payload.msg
+    || responseText
+    || getErrorMessage('WRITE_FAILED');
 }
 
 function getBaseTokenFromUrl(value: string): string | undefined {
@@ -149,17 +190,18 @@ async function writeUserIdBatch(
   targetFieldName: string,
   writes: PendingWrite[],
 ): Promise<void> {
-  const response = await fetch('/api/base/batch-update', {
+  const response = await fetch(`${API_BASE_URL}/api/v1/plugins/id-to-user/batch-update`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${authSession}`,
       'Content-Type': 'application/json; charset=utf-8',
+      'X-Plugin-Key': PLUGIN_KEY,
     },
     body: JSON.stringify({
       appToken: baseToken,
       tableId,
       targetFieldName,
-      records: writes,
+      records: writes.map(({ recordId, userIds }) => ({ recordId, userIds })),
     }),
   });
 
@@ -170,10 +212,11 @@ async function writeUserIdBatch(
   } catch {
     payload = {};
   }
-  if (!response.ok || payload.code !== 0) {
-    const detail = payload.error?.message || payload.msg || responseText || getErrorMessage('WRITE_FAILED');
+  if (!response.ok || payload.success !== true) {
+    const detail = getApiErrorDetail(payload, responseText);
+    const code = payload.error?.code ?? payload.code ?? '未知';
     throw new Error(
-      `HTTP ${response.status} / code ${payload.code ?? '未知'}：${detail}`
+      `HTTP ${response.status} / code ${code}：${detail}`
       + `；app=${maskIdentifier(baseToken)}，table=${maskIdentifier(tableId)}`,
     );
   }
